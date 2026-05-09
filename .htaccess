@@ -1,0 +1,10 @@
+# Enable Mod Rewrite
+RewriteEngine On
+
+# Exclude existing files and directories from rewriting
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Rewrite SEO-friendly book URLs
+RewriteRule ^book/([0-9]+)/ books/view.php?id=$1 [NC,L,QSA]
+
