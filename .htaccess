@@ -5,6 +5,14 @@ RewriteEngine On
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 
-# Rewrite SEO-friendly book URLs
-RewriteRule ^book/([0-9]+)/ books/view.php?id=$1 [NC,L,QSA]
+# Listing and genre pages
+RewriteRule ^books/?$ books/browse.php [NC,L,QSA]
+RewriteRule ^genre/([a-z0-9-]+)/?$ books/browse.php?genre_slug=$1 [NC,L,QSA]
+
+# SEO-friendly book details route
+RewriteRule ^books/([a-z0-9-]+)/?$ books/view.php?slug=$1 [NC,L,QSA]
+
+# Legacy route compatibility
+RewriteRule ^book/([0-9]+)/([^/]+)/?$ books/view.php?id=$1 [NC,L,QSA]
+RewriteRule ^book/([0-9]+)/?$ books/view.php?id=$1 [NC,L,QSA]
 

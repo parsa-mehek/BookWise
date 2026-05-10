@@ -1,20 +1,60 @@
 <?php
-include("../includes/header.php");
 include("../config/db.php");
 include("../includes/helpers.php");
 
-$id = $_GET['id'];
+$id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$slug = isset($_GET['slug']) ? trim((string)$_GET['slug']) : '';
+$book = null;
 
-$sql = "SELECT * FROM books WHERE id=?";
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("i", $id);
-$stmt->execute();
-$result = $stmt->get_result();
-$book = $result->fetch_assoc();
+if ($slug !== '') {
+  $slug_column_result = $conn->query("SHOW COLUMNS FROM books LIKE 'slug'");
+  $has_slug_column = $slug_column_result && $slug_column_result->num_rows > 0;
+
+  if ($has_slug_column) {
+    $sql = "SELECT * FROM books WHERE slug = ? LIMIT 1";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("s", $slug);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $book = $result->fetch_assoc();
+  } else {
+    $sql = "SELECT * FROM books
+            WHERE LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(title, ' ', '-'), '''', ''), ',', ''), '.', ''), ':', '')) = ?
+            LIMIT 1";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("s", $slug);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $book = $result->fetch_assoc();
+  }
+}
+
+if (!$book && $id > 0) {
+  $sql = "SELECT * FROM books WHERE id = ? LIMIT 1";
+  $stmt = $conn->prepare($sql);
+  $stmt->bind_param("i", $id);
+  $stmt->execute();
+  $result = $stmt->get_result();
+  $book = $result->fetch_assoc();
+}
+
+include("../includes/header.php");
+
+if (!$book) {
+?>
+<div class="card">
+  <h2>Book not found</h2>
+  <p>The requested book does not exist or has been removed.</p>
+  <a href="/book-review/books" class="btn">Back to Books</a>
+</div>
+<?php
+  include("../includes/footer.php");
+  exit();
+}
 
 $avg_sql = "SELECT AVG(rating) AS avg_rating, COUNT(*) AS total_reviews FROM reviews WHERE book_id = ?";
 $avg_stmt = $conn->prepare($avg_sql);
-$avg_stmt->bind_param("i", $id);
+$avg_stmt->bind_param("i", $book['id']);
 $avg_stmt->execute();
 $avg_result = $avg_stmt->get_result()->fetch_assoc();
 $avg_rating = $avg_result['avg_rating'];
@@ -68,7 +108,7 @@ if (isset($_SESSION['user_id'])) {
   <?php
   $sql = "SELECT reviews.*, users.name FROM reviews JOIN users ON reviews.user_id = users.id WHERE book_id = ? ORDER BY reviews.id DESC";
   $stmt = $conn->prepare($sql);
-  $stmt->bind_param("i", $id);
+  $stmt->bind_param("i", $book['id']);
   $stmt->execute();
   $result = $stmt->get_result();
   

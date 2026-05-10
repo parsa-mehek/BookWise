@@ -1,7 +1,6 @@
 <?php
 require_once("../config/db.php");
 
-$hide_navbar_search = true;
 $search = trim($_GET['search'] ?? '');
 $genre = trim($_GET['genre'] ?? 'All');
 $time_period = trim($_GET['time_period'] ?? 'all');
@@ -115,16 +114,16 @@ body {
 
 .top-rated-page {
   flex: 1;
-  max-width: 1200px;
-  width: calc(100% - 32px);
+  max-width: 1280px;
+  width: 100%;
   margin: 0 auto;
-  padding: 40px 0 56px;
+  padding: 60px 60px;
 }
 
 .top-shell {
   display: grid;
   grid-template-columns: 260px minmax(0, 1fr);
-  gap: 28px;
+  gap: 40px;
   align-items: start;
 }
 
@@ -512,6 +511,10 @@ body {
 }
 
 @media (max-width: 1024px) {
+  .top-rated-page {
+    padding: 40px 40px;
+  }
+
   .top-shell {
     grid-template-columns: 1fr;
   }
@@ -529,10 +532,9 @@ body {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 720px) {
   .top-rated-page {
-    width: calc(100% - 24px);
-    padding-top: 28px;
+    padding: 30px 12px;
   }
 
   .filter-bar-form {
@@ -545,11 +547,15 @@ body {
   }
 
   .book-grid {
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   }
 }
 
 @media (max-width: 480px) {
+  .top-rated-page {
+    padding: 20px 12px;
+  }
+
   .search-filter-bar,
   .sidebar-card {
     padding: 16px;

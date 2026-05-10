@@ -490,7 +490,7 @@ $reviews_result = $conn->query($reviews_sql);
             <div class="hero-section">
                 <div class="hero-content">
                     <h1>Welcome back, <?php echo htmlspecialchars($user_name); ?>!</h1>
-                    <p>You've read <strong><?php echo $books_read; ?></strong> book<?php echo $books_read != 1 ? 's' : ''; ?> this year. <strong>3 more to reach your 2024 goal!</strong></p>
+                    <p>You've read <strong><?php echo $books_read; ?></strong> book<?php echo $books_read != 1 ? 's' : ''; ?> this year. <strong>3 more to reach your 2026 goal!</strong></p>
                     <div class="hero-buttons">
                         <a href="/book-review/books/browse.php" class="btn btn-primary"><i class="fa-solid fa-book-open" aria-hidden="true"></i> Browse Books</a>
                         <button class="btn btn-secondary"><i class="fa-solid fa-book-reader" aria-hidden="true"></i> My Library</button>
