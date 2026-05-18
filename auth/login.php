@@ -17,7 +17,26 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $result = $stmt->get_result();
 
     if ($user = $result->fetch_assoc()) {
-        if (password_verify($password, $user['password'])) {
+        $storedPassword = $user['password'];
+        $passwordIsValid = false;
+        $needsRehash = false;
+
+        if (password_verify($password, $storedPassword)) {
+            $passwordIsValid = true;
+            $needsRehash = password_needs_rehash($storedPassword, PASSWORD_DEFAULT);
+        } elseif ($storedPassword === $password) {
+            $passwordIsValid = true;
+            $needsRehash = true;
+        }
+
+        if ($passwordIsValid) {
+            if ($needsRehash) {
+                $newPasswordHash = password_hash($password, PASSWORD_DEFAULT);
+                $updateStmt = $conn->prepare("UPDATE users SET password = ? WHERE id = ?");
+                $updateStmt->bind_param("si", $newPasswordHash, $user['id']);
+                $updateStmt->execute();
+            }
+
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['user_name'] = $user['name'];
             header("Location: " . $redirect);

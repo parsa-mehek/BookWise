@@ -1,18 +1,18 @@
-<?php
-include("../includes/header.php");
-include("../config/db.php");
-include("../includes/helpers.php");
 
-// Check if user is logged in
+<?php
+session_start();
+
 if (!isset($_SESSION['user_id'])) {
     header("Location: /book-review/auth/login.php");
     exit();
 }
 
+include("../config/db.php");
+include("../includes/helpers.php");
+
 $user_id = $_SESSION['user_id'];
 $user_name = $_SESSION['user_name'] ?? 'Reader';
 
-// Get user's books read count
 $user_books_sql = "SELECT COUNT(*) as total_read FROM reviews WHERE user_id = ?";
 $stmt = $conn->prepare($user_books_sql);
 $stmt->bind_param("i", $user_id);
@@ -20,7 +20,6 @@ $stmt->execute();
 $user_stats = $stmt->get_result()->fetch_assoc();
 $books_read = $user_stats['total_read'] ?? 0;
 
-// Get top rated books
 $top_books_sql = "SELECT books.*, AVG(reviews.rating) AS avg_rating, COUNT(reviews.id) as review_count
                   FROM books
                   LEFT JOIN reviews ON books.id = reviews.book_id
@@ -29,7 +28,6 @@ $top_books_sql = "SELECT books.*, AVG(reviews.rating) AS avg_rating, COUNT(revie
                   LIMIT 5";
 $top_books_result = $conn->query($top_books_sql);
 
-// Get community reviews
 $reviews_sql = "SELECT reviews.*, users.name as user_name, books.title as book_title
                 FROM reviews
                 LEFT JOIN users ON reviews.user_id = users.id
@@ -37,15 +35,28 @@ $reviews_sql = "SELECT reviews.*, users.name as user_name, books.title as book_t
                 ORDER BY reviews.id DESC
                 LIMIT 3";
 $reviews_result = $conn->query($reviews_sql);
+
+$goal_year = (int) date('Y');
+$goal_query = $conn->prepare("SELECT goal_count FROM reading_goals WHERE user_id = ? AND goal_year = ? LIMIT 1");
+$goal_query->bind_param("ii", $user_id, $goal_year);
+$goal_query->execute();
+$goal_row = $goal_query->get_result()->fetch_assoc();
+$goal_count = (int) ($goal_row['goal_count'] ?? 10);
+
+$completed_query = $conn->prepare("SELECT COUNT(*) AS total FROM user_library WHERE user_id = ? AND status = 'completed' AND YEAR(completed_at) = ?");
+$completed_query->bind_param("ii", $user_id, $goal_year);
+$completed_query->execute();
+$completed_row = $completed_query->get_result()->fetch_assoc();
+$completed_books = (int) ($completed_row['total'] ?? 0);
+
+$remaining_books = max(0, $goal_count - $completed_books);
+$progress_percent = $goal_count > 0 ? min(100, (int) round(($completed_books / $goal_count) * 100)) : 0;
+
+$page_title = 'Dashboard - Bookwise';
+include("../includes/header.php");
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Bookwise</title>
-    <style>
+<style>
         * {
             margin: 0;
             padding: 0;
@@ -65,7 +76,8 @@ $reviews_result = $conn->query($reviews_sql);
         }
 
         .dashboard-container {
-            max-width: 1200px;
+            width: 95%;
+            max-width: 1600px;
             margin: 0 auto;
         }
 
@@ -212,21 +224,29 @@ $reviews_result = $conn->query($reviews_sql);
 
         .books-list {
             display: flex;
-            gap: 20px;
+            flex-wrap: nowrap;
+            gap: 24px;
+            align-items: stretch;
+            width: 100%;
+            margin-bottom: 0;
+            padding-bottom: 0;
             overflow-x: auto;
-            padding-bottom: 10px;
+            scrollbar-width: thin;
         }
 
         .book-card {
             background: white;
-            padding: 12px;
+            padding: 0;
             border-radius: 15px;
-            width: 160px;
-            flex-shrink: 0;
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
             border: 1px solid #f0f0f0;
             transition: all 0.3s ease;
             cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            flex: 0 0 220px;
+            width: 220px;
+            min-height: 100%;
         }
 
         .book-card:hover {
@@ -237,18 +257,18 @@ $reviews_result = $conn->query($reviews_sql);
 
         .book-cover {
             width: 100%;
-            height: 200px;
+            aspect-ratio: 4 / 5;
             background: linear-gradient(135deg, #7b5cff 0%, #9f7bff 100%);
-            border-radius: 10px;
+            border-radius: 10px 10px 0 0;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 48px;
+            font-size: 42px;
             color: white;
             font-weight: 800;
             position: relative;
             overflow: hidden;
-            margin-bottom: 10px;
+            margin-bottom: 0;
         }
 
         .book-cover::after {
@@ -281,11 +301,16 @@ $reviews_result = $conn->query($reviews_sql);
         }
 
         .book-info {
-            padding: 0;
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            flex-grow: 1;
+            justify-content: center;
         }
 
         .book-title {
-            font-size: 14px;
+            font-size: 20px;
             font-weight: 700;
             color: #1a1a1a;
             margin-bottom: 4px;
@@ -444,6 +469,11 @@ $reviews_result = $conn->query($reviews_sql);
                 gap: 16px;
             }
 
+            .book-card {
+                flex: 0 0 200px;
+                width: 200px;
+            }
+
             .reviews-list {
                 grid-template-columns: 1fr;
             }
@@ -451,6 +481,7 @@ $reviews_result = $conn->query($reviews_sql);
             .section-title {
                 font-size: 22px;
             }
+
         }
 
         @media (max-width: 480px) {
@@ -480,9 +511,8 @@ $reviews_result = $conn->query($reviews_sql);
                 padding: 16px;
             }
         }
+
     </style>
-</head>
-<body>
     <div class="dashboard-main">
         <div class="dashboard-container">
 
@@ -490,24 +520,24 @@ $reviews_result = $conn->query($reviews_sql);
             <div class="hero-section">
                 <div class="hero-content">
                     <h1>Welcome back, <?php echo htmlspecialchars($user_name); ?>!</h1>
-                    <p>You've read <strong><?php echo $books_read; ?></strong> book<?php echo $books_read != 1 ? 's' : ''; ?> this year. <strong>3 more to reach your 2026 goal!</strong></p>
+                    <p>You've read <strong><?php echo $completed_books; ?></strong> book<?php echo $completed_books != 1 ? 's' : ''; ?> this year. <strong><?php echo $remaining_books; ?> more to reach your <?php echo $goal_year; ?> goal!</strong></p>
                     <div class="hero-buttons">
                         <a href="/book-review/books/browse.php" class="btn btn-primary"><i class="fa-solid fa-book-open" aria-hidden="true"></i> Browse Books</a>
-                        <button class="btn btn-secondary"><i class="fa-solid fa-book-reader" aria-hidden="true"></i> My Library</button>
+                        <a href="/book-review/user/my-library.php" class="btn btn-secondary"><i class="fa-solid fa-book-reader" aria-hidden="true"></i> My Library</a>
                     </div>
                 </div>
                 <div class="hero-stats">
                     <div class="stat-box">
-                        <h2><?php echo $books_read; ?></h2>
-                        <p>BOOKS</p>
+                        <h2><?php echo $completed_books; ?></h2>
+                        <p>READ</p>
                     </div>
                     <div class="stat-box">
-                        <h2>4.2</h2>
-                        <p>AVG RATING</p>
+                        <h2><?php echo $goal_count; ?></h2>
+                        <p>GOAL</p>
                     </div>
                     <div class="stat-box">
-                        <h2>24</h2>
-                        <p>REVIEWS</p>
+                        <h2><?php echo $progress_percent; ?>%</h2>
+                        <p>PROGRESS</p>
                     </div>
                 </div>
             </div>

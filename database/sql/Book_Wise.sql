@@ -211,6 +211,54 @@ ALTER TABLE `users`
 ALTER TABLE `reviews`
   ADD CONSTRAINT `reviews_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
   ADD CONSTRAINT `reviews_ibfk_2` FOREIGN KEY (`book_id`) REFERENCES `books` (`id`);
+
+--
+-- Table structure for table `user_library`
+--
+
+CREATE TABLE `user_library` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `book_id` int(11) NOT NULL,
+  `status` enum('reading','completed') NOT NULL DEFAULT 'reading',
+  `added_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `completed_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+ALTER TABLE `user_library`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `user_book_unique` (`user_id`,`book_id`),
+  ADD KEY `book_id_2` (`book_id`);
+
+ALTER TABLE `user_library`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+ALTER TABLE `user_library`
+  ADD CONSTRAINT `user_library_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `user_library_ibfk_2` FOREIGN KEY (`book_id`) REFERENCES `books` (`id`) ON DELETE CASCADE;
+
+--
+-- Table structure for table `reading_goals`
+--
+
+CREATE TABLE `reading_goals` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `goal_year` year(4) NOT NULL,
+  `goal_count` int(11) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+ALTER TABLE `reading_goals`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `user_year_unique` (`user_id`,`goal_year`);
+
+ALTER TABLE `reading_goals`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+ALTER TABLE `reading_goals`
+  ADD CONSTRAINT `reading_goals_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

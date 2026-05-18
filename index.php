@@ -38,7 +38,7 @@ if ($conn) {
       <?php if (isset($_SESSION['user_id'])): ?>
         <a href="/book-review/books/index.php" class="btn-secondary">Browse Books</a>
       <?php else: ?>
-        <a href="/book-review/auth/login.php?redirect=/book-review/books/index.php" class="btn-secondary">Browse Books</a>
+        <a href="/book-review/auth/login.php" class="btn-secondary">Browse Books</a>
       <?php endif; ?>
     </div>
   </div>
@@ -59,7 +59,7 @@ if ($conn) {
 </section>
 
 <section class="search-panel">
-  <form action="<?php echo isset($_SESSION['user_id']) ? '/book-review/books/index.php' : '/book-review/auth/login.php?redirect=/book-review/books/index.php'; ?>" method="GET" class="search-form">
+  <form action="<?php echo isset($_SESSION['user_id']) ? '/book-review/books/index.php' : '/book-review/auth/login.php'; ?>" method="GET" class="search-form">
     <div class="search-input-wrap">
       <input type="text" name="search" placeholder="Search by title, author, or ISBN">
     </div>
