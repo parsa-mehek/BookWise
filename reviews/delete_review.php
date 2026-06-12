@@ -21,7 +21,17 @@ if ($verify_result->num_rows == 0) {
 }
 
 $verify_row = $verify_result->fetch_assoc();
-$book_id = $verify_row['book_id'];
+$book_id = (int)$verify_row['book_id'];
+
+$book_stmt = $conn->prepare("SELECT slug, title FROM books WHERE id = ? LIMIT 1");
+$book_stmt->bind_param('i', $book_id);
+$book_stmt->execute();
+$book_row = $book_stmt->get_result()->fetch_assoc();
+$book_slug = trim((string)($book_row['slug'] ?? ''));
+if ($book_slug === '') {
+    $book_slug = preg_replace('/[^a-z0-9]+/i', '-', strtolower((string)($book_row['title'] ?? '')));
+    $book_slug = trim($book_slug, '-');
+}
 
 // Delete the review
 $sql = "DELETE FROM reviews WHERE id=? AND user_id=?";
@@ -29,7 +39,7 @@ $stmt = $conn->prepare($sql);
 $stmt->bind_param("ii", $review_id, $user_id);
 
 if ($stmt->execute()) {
-    echo "Review deleted! <a href='../books/view.php?id=" . $book_id . "'>Go back</a>";
+    echo "Review deleted! <a href='../books/" . rawurlencode($book_slug) . "'>Go back</a>";
 } else {
     echo "Error deleting review!";
 }

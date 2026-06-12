@@ -21,8 +21,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $check_stmt->execute();
     $check_result = $check_stmt->get_result();
 
+    $book_slug_stmt = $conn->prepare("SELECT slug, title FROM books WHERE id = ? LIMIT 1");
+    $book_slug_stmt->bind_param('i', $book_id);
+    $book_slug_stmt->execute();
+    $book_row = $book_slug_stmt->get_result()->fetch_assoc();
+    $book_slug = trim((string)($book_row['slug'] ?? ''));
+    if ($book_slug === '') {
+        $book_slug = preg_replace('/[^a-z0-9]+/i', '-', strtolower((string)($book_row['title'] ?? '')));
+        $book_slug = trim($book_slug, '-');
+    }
+    $book_view_url = '../books/' . rawurlencode($book_slug);
+
     if ($check_result->num_rows > 0) {
-        $book_view_url = '../books/view.php?id=' . $book_id;
         ?>
         <!DOCTYPE html>
         <html lang="en">
@@ -55,15 +65,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $rating = (int) ($_POST['rating'] ?? 0);
     $comment = trim($_POST['comment'] ?? '');
 
-    $sql = "INSERT INTO reviews (user_id, book_id, rating, comment) VALUES (?, ?, ?, ?)";
+    // Insert review as pending for moderation
+    $sql = "INSERT INTO reviews (user_id, book_id, rating, comment, status) VALUES (?, ?, ?, ?, 'pending')";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("iiis", $user_id, $book_id, $rating, $comment);
 
     if ($stmt->execute()) {
-        $updateAvg = "\nUPDATE books b\nSET average_rating = (\n    SELECT AVG(r.rating)\n    FROM reviews r\n    WHERE r.book_id = b.id\n)\nWHERE b.id = '" . $book_id . "'\n";
-        mysqli_query($conn, $updateAvg);
 
-        $book_view_url = '../books/view.php?id=' . $book_id;
+        $book_view_url = '../books/' . rawurlencode($book_slug);
         ?>
         <!DOCTYPE html>
         <html lang="en">

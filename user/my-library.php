@@ -239,7 +239,15 @@ body {
             <h3><?php echo sanitize($book['title']); ?></h3>
             <p><?php echo sanitize($book['author'] ?: 'Unknown Author'); ?></p>
             <div class="library-actions">
-              <a class="btn-primary" href="/book-review/books/view.php?id=<?php echo (int)$book['id']; ?>">View Details</a>
+              <?php
+                $book_slug = trim((string)($book['slug'] ?? ''));
+                if ($book_slug === '') {
+                  $book_slug = preg_replace('/[^a-z0-9]+/i', '-', strtolower((string)$book['title']));
+                  $book_slug = trim($book_slug, '-');
+                }
+                $book_url = '/book-review/books/' . rawurlencode($book_slug);
+              ?>
+              <a class="btn-primary" href="<?php echo sanitize($book_url); ?>">View Details</a>
               <?php if ($book['status'] === 'reading'): ?>
                 <a class="btn-secondary" href="/book-review/library/complete.php?id=<?php echo (int)$book['id']; ?>">Mark As Done</a>
               <?php else: ?>

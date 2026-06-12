@@ -60,4 +60,18 @@ function displayStars($rating) {
     return str_repeat('<i class="fa-solid fa-star" aria-hidden="true"></i>', $rounded) . " (" . round($rating, 1) . "/5)";
 }
 
+// Check whether a column exists on a table (returns bool)
+/**
+ * @param mysqli $conn
+ * @param string $table
+ * @param string $column
+ * @return bool
+ */
+function column_exists(mysqli $conn, string $table, string $column): bool {
+    $tableEscaped = $conn->real_escape_string($table);
+    $columnEscaped = $conn->real_escape_string($column);
+    $res = $conn->query("SHOW COLUMNS FROM {$tableEscaped} LIKE '{$columnEscaped}'");
+    return (bool)($res && $res->num_rows > 0);
+}
+
 ?>

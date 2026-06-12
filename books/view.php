@@ -52,7 +52,12 @@ if (!$book) {
   exit();
 }
 
+// Calculate average rating and total reviews; only filter by status if column exists
+$has_review_status = column_exists($conn, 'reviews', 'status');
 $avg_sql = "SELECT AVG(rating) AS avg_rating, COUNT(*) AS total_reviews FROM reviews WHERE book_id = ?";
+if ($has_review_status) {
+  $avg_sql .= " AND status = 'approved'";
+}
 $avg_stmt = $conn->prepare($avg_sql);
 $avg_stmt->bind_param("i", $book['id']);
 $avg_stmt->execute();
@@ -60,14 +65,48 @@ $avg_result = $avg_stmt->get_result()->fetch_assoc();
 $avg_rating = $avg_result['avg_rating'];
 $total_reviews = $avg_result['total_reviews'];
 
-$cover_image = trim((string)($book['cover_image'] ?? ''));
+$cover_image = trim((string)($book['cover_image'] ?? $book['image'] ?? ''));
 $book_genre = trim((string)($book['genre'] ?? 'Fiction'));
 
-$reviews_sql = "SELECT reviews.*, users.name FROM reviews JOIN users ON reviews.user_id = users.id WHERE book_id = ? ORDER BY reviews.id DESC";
+$reviews_sql = "SELECT reviews.*, users.name FROM reviews JOIN users ON reviews.user_id = users.id WHERE book_id = ?";
+if ($has_review_status) {
+  $reviews_sql .= " AND reviews.status = 'approved'";
+}
+$reviews_sql .= " ORDER BY reviews.id DESC";
 $reviews_stmt = $conn->prepare($reviews_sql);
 $reviews_stmt->bind_param("i", $book['id']);
 $reviews_stmt->execute();
 $reviews_result = $reviews_stmt->get_result();
+
+// Auto-generate slug if missing and books table has slug column
+$slug_check = $conn->query("SHOW COLUMNS FROM books LIKE 'slug'");
+if ($slug_check && $slug_check->num_rows > 0) {
+  if (empty($book['slug'])) {
+    $generated = preg_replace('/[^a-z0-9\s-]/i', '', strtolower($book['title']));
+    $generated = preg_replace('/\s+/', '-', trim($generated));
+    $slug = $generated ?: ('book-' . $book['id']);
+
+    // ensure uniqueness
+    $uniq_sql = "SELECT COUNT(*) AS cnt FROM books WHERE slug = ?";
+    $uniq_stmt = $conn->prepare($uniq_sql);
+    $test_slug = $slug;
+    $i = 1;
+    while (true) {
+      $uniq_stmt->bind_param("s", $test_slug);
+      $uniq_stmt->execute();
+      $res = $uniq_stmt->get_result()->fetch_assoc();
+      if ((int)$res['cnt'] === 0) break;
+      $test_slug = $slug . '-' . $i;
+      $i++;
+    }
+
+    $update_sql = "UPDATE books SET slug = ? WHERE id = ?";
+    $update_stmt = $conn->prepare($update_sql);
+    $update_stmt->bind_param("si", $test_slug, $book['id']);
+    $update_stmt->execute();
+    $book['slug'] = $test_slug;
+  }
+}
 ?>
 <style>
 .details-page {

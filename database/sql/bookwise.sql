@@ -32,6 +32,7 @@ CREATE TABLE `books` (
   `title` varchar(255) DEFAULT NULL,
   `author` varchar(255) DEFAULT NULL,
   `image` varchar(255) DEFAULT NULL,
+  `slug` varchar(255) DEFAULT NULL,
   `description` text DEFAULT NULL,
   `average_rating` decimal(3,2) DEFAULT 0.00
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -60,7 +61,7 @@ CREATE TABLE `reviews` (
   `user_id` int(11) DEFAULT NULL,
   `book_id` int(11) DEFAULT NULL,
   `comment` text DEFAULT NULL,
-  `status` enum('approved','pending') DEFAULT 'approved',
+  `status` enum('approved','pending') DEFAULT 'pending',
   `rating` int(11) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -86,6 +87,10 @@ CREATE TABLE `users` (
 --
 ALTER TABLE `books`
   ADD PRIMARY KEY (`id`);
+  
+-- add unique slug index if not null
+ALTER TABLE `books`
+  ADD UNIQUE KEY `slug` (`slug`);
 
 --
 -- Indexes for table `ratings`
