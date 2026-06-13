@@ -30,11 +30,25 @@ WHERE slug IS NULL OR TRIM(slug) = '';
 ALTER TABLE books
   ADD UNIQUE KEY IF NOT EXISTS `slug` (`slug`(191));
 
--- 4) Ensure reviews default to 'pending' for moderation (idempotent)
+-- 4) Ensure reviews default to 'approved' in the schema (idempotent)
 ALTER TABLE reviews
-  MODIFY COLUMN status ENUM('approved','pending') DEFAULT 'pending';
+  MODIFY COLUMN status ENUM('pending','approved') DEFAULT 'approved';
 
--- 5) Recalculate all book average ratings from approved reviews
+-- 5) Create review_comments table for review discussion threads
+CREATE TABLE IF NOT EXISTS review_comments (
+  id INT NOT NULL AUTO_INCREMENT,
+  review_id INT NOT NULL,
+  user_id INT NOT NULL,
+  parent_id INT DEFAULT NULL,
+  comment TEXT NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY review_id (review_id),
+  KEY parent_id (parent_id),
+  KEY user_id (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 6) Recalculate all book average ratings from approved reviews
 UPDATE books b
 SET average_rating = (
   SELECT IFNULL(AVG(r.rating), 0) FROM reviews r WHERE r.book_id = b.id AND r.status = 'approved'

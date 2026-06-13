@@ -34,6 +34,17 @@ $statements = [
         slug VARCHAR(120) NOT NULL UNIQUE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )",
+    "CREATE TABLE IF NOT EXISTS review_comments (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        review_id INT NOT NULL,
+        user_id INT NOT NULL,
+        parent_id INT DEFAULT NULL,
+        comment TEXT NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        KEY review_id (review_id),
+        KEY parent_id (parent_id),
+        KEY user_id (user_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
 ];
 
 foreach ($statements as $statement) {

@@ -22,7 +22,7 @@ $books_read = $user_stats['total_read'] ?? 0;
 
 $top_books_sql = "SELECT books.*, AVG(reviews.rating) AS avg_rating, COUNT(reviews.id) as review_count
                   FROM books
-                  LEFT JOIN reviews ON books.id = reviews.book_id
+                  LEFT JOIN reviews ON books.id = reviews.book_id AND reviews.status = 'approved'
                   GROUP BY books.id
                   ORDER BY avg_rating DESC
                   LIMIT 5";
@@ -32,6 +32,7 @@ $reviews_sql = "SELECT reviews.*, users.name as user_name, books.title as book_t
                 FROM reviews
                 LEFT JOIN users ON reviews.user_id = users.id
                 LEFT JOIN books ON reviews.book_id = books.id
+                WHERE reviews.status = 'approved'
                 ORDER BY reviews.id DESC
                 LIMIT 3";
 $reviews_result = $conn->query($reviews_sql);

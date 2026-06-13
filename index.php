@@ -15,7 +15,11 @@ if ($conn) {
         $total_books = $row['count'] ?? 0;
     }
     
-    $result = $conn->query("SELECT COUNT(*) as count FROM reviews");
+    $has_review_status = column_exists($conn, 'reviews', 'status');
+    $reviews_sql = $has_review_status
+      ? "SELECT COUNT(*) as count FROM reviews WHERE status = 'approved'"
+      : "SELECT COUNT(*) as count FROM reviews";
+    $result = $conn->query($reviews_sql);
     if ($result) {
         $row = $result->fetch_assoc();
         $total_reviews = $row['count'] ?? 0;

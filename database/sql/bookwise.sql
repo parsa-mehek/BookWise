@@ -61,8 +61,23 @@ CREATE TABLE `reviews` (
   `user_id` int(11) DEFAULT NULL,
   `book_id` int(11) DEFAULT NULL,
   `comment` text DEFAULT NULL,
-  `status` enum('approved','pending') DEFAULT 'pending',
+  `status` enum('pending','approved') DEFAULT 'approved',
   `rating` int(11) DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `review_comments`
+--
+
+CREATE TABLE `review_comments` (
+  `id` int(11) NOT NULL,
+  `review_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `parent_id` int(11) DEFAULT NULL,
+  `comment` text NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -106,6 +121,15 @@ ALTER TABLE `reviews`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Indexes for table `review_comments`
+--
+ALTER TABLE `review_comments`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `review_id` (`review_id`),
+  ADD KEY `parent_id` (`parent_id`),
+  ADD KEY `user_id` (`user_id`);
+
+--
 -- Indexes for table `users`
 --
 ALTER TABLE `users`
@@ -132,6 +156,12 @@ ALTER TABLE `ratings`
 -- AUTO_INCREMENT for table `reviews`
 --
 ALTER TABLE `reviews`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `review_comments`
+--
+ALTER TABLE `review_comments`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
