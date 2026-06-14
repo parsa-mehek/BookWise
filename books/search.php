@@ -4,31 +4,10 @@ require_once("../includes/helpers.php");
 
 $page_title = 'Search Results';
 $search = trim($_GET['search'] ?? '');
-$page = max(1, (int)($_GET['page'] ?? 1));
-$per_page = 12;
-$offset = ($page - 1) * $per_page;
 $books = [];
 
 if ($search !== '') {
     $search_term = '%' . $search . '%';
-
-    // count total matching books (group by handled in subquery)
-    $count_sql = "SELECT COUNT(*) AS total FROM (
-        SELECT books.id FROM books
-        WHERE books.title LIKE ? OR books.author LIKE ? OR books.description LIKE ? OR books.genre LIKE ?
-        GROUP BY books.id
-    ) tmp";
-    $count_stmt = $conn->prepare($count_sql);
-    $count_stmt->bind_param("ssss", $search_term, $search_term, $search_term, $search_term);
-    $count_stmt->execute();
-    $count_row = $count_stmt->get_result()->fetch_assoc();
-    $total_books = (int)($count_row['total'] ?? 0);
-    $total_pages = max(1, (int)ceil($total_books / $per_page));
-
-    $has_review_status = column_exists($conn, 'reviews', 'status');
-    $reviews_join = $has_review_status
-        ? "LEFT JOIN reviews ON books.id = reviews.book_id AND reviews.status = 'approved'"
-        : "LEFT JOIN reviews ON books.id = reviews.book_id";
 
     $sql = "SELECT
                 books.id,
@@ -39,17 +18,16 @@ if ($search !== '') {
                 COALESCE(AVG(reviews.rating), 0) AS average_rating,
                 COUNT(reviews.id) AS review_count
             FROM books
-                {$reviews_join}
+            LEFT JOIN reviews ON books.id = reviews.book_id
             WHERE books.title LIKE ?
                OR books.author LIKE ?
                OR books.description LIKE ?
                OR books.genre LIKE ?
             GROUP BY books.id
-            ORDER BY average_rating DESC, review_count DESC, books.title ASC
-            LIMIT ? OFFSET ?";
+            ORDER BY average_rating DESC, review_count DESC, books.title ASC";
 
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("ssssii", $search_term, $search_term, $search_term, $search_term, $per_page, $offset);
+    $stmt->bind_param("ssss", $search_term, $search_term, $search_term, $search_term);
     $stmt->execute();
 
     $result = $stmt->get_result();
@@ -232,27 +210,7 @@ include("../includes/header.php");
             <?php else: ?>
                 <p>Enter a search term to find books by title, author, description, or genre.</p>
             <?php endif; ?>
-                </div>
-
-                <?php if (!empty($total_pages) && $total_pages > 1): ?>
-                    <div class="pagination" style="margin-top:20px;display:flex;gap:8px;align-items:center;justify-content:center">
-                        <?php
-                            $base_params = ['search' => $search];
-                            $prev_page = max(1, $page - 1);
-                            $next_page = min($total_pages, $page + 1);
-                        ?>
-                        <a class="page-link <?php echo $page <= 1 ? 'disabled' : ''; ?>" href="?<?php echo htmlspecialchars(http_build_query(array_merge($base_params, ['page' => $prev_page]))); ?>">&lsaquo;</a>
-                        <?php
-                            $window_start = max(1, $page - 2);
-                            $window_end = min($total_pages, $page + 2);
-                            for ($i = $window_start; $i <= $window_end; $i++):
-                                $page_params = $base_params + ['page' => $i];
-                        ?>
-                            <a class="page-link <?php echo $i === $page ? 'active' : ''; ?>" href="?<?php echo htmlspecialchars(http_build_query($page_params)); ?>"><?php echo $i; ?></a>
-                        <?php endfor; ?>
-                        <a class="page-link <?php echo $page >= $total_pages ? 'disabled' : ''; ?>" href="?<?php echo htmlspecialchars(http_build_query(array_merge($base_params, ['page' => $next_page]))); ?>">&rsaquo;</a>
-                    </div>
-                <?php endif; ?>
+        </div>
         <div class="search-results-count"><?php echo count($books); ?> results</div>
     </section>
 
@@ -287,15 +245,7 @@ include("../includes/header.php");
                         <h3><?php echo sanitize($book['title']); ?></h3>
                         <p class="search-author"><?php echo sanitize($book['author'] ?: 'Unknown Author'); ?></p>
 
-                        <?php
-                            $book_slug = trim((string)($book['slug'] ?? ''));
-                            if ($book_slug === '') {
-                                $book_slug = preg_replace('/[^a-z0-9]+/i', '-', strtolower((string)$book['title']));
-                                $book_slug = trim($book_slug, '-');
-                            }
-                            $book_url = '/book-review/books/' . rawurlencode($book_slug);
-                        ?>
-                        <a class="btn-primary" href="<?php echo sanitize($book_url); ?>">View Details</a>
+                        <a class="btn-primary" href="/book-review/books/view.php?id=<?php echo (int)$book['id']; ?>">View Details</a>
                     </div>
                 </article>
             <?php endforeach; ?>

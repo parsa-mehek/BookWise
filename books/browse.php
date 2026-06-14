@@ -470,7 +470,7 @@ include("../includes/header.php");
       <div class="books-grid">
         <?php foreach($books as $book):
             $book_slug = trim((string)($book['book_slug'] ?? '')) ?: slugify($book['title']);
-          $book_url = '/book-review/books/'.rawurlencode($book_slug);
+            $book_url = '/book-review/books/'.urlencode($book_slug);
             $cover = trim((string)($book['cover_image'] ?? ''));
             $avg_rating = round((float)$book['avg_rated'],1);
             $review_count = (int)($book['review_count'] ?? 0);

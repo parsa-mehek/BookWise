@@ -1,6 +1,5 @@
 <?php
-require_once __DIR__ . "/../config/db.php";
-require_once __DIR__ . "/../includes/helpers.php";
+require_once("../config/db.php");
 
 $search = trim($_GET['search'] ?? '');
 $genre = trim($_GET['genre'] ?? 'All');
@@ -9,17 +8,6 @@ $sort = trim($_GET['sort'] ?? 'rating');
 $page = max(1, (int)($_GET['page'] ?? 1));
 $per_page = 12;
 $offset = ($page - 1) * $per_page;
-
-$column_exists = function ($table, $column) use ($conn) {
-  $table_escaped = $conn->real_escape_string($table);
-  $column_escaped = $conn->real_escape_string($column);
-  $check = $conn->query("SHOW COLUMNS FROM {$table_escaped} LIKE '{$column_escaped}'");
-  return $check && $check->num_rows > 0;
-};
-
-$has_genre_column = $column_exists('books', 'genre');
-$has_review_status_column = $column_exists('reviews', 'status');
-$has_review_date_column = $column_exists('reviews', 'created_at');
 
 $allowed_genres = ['All', 'Fiction', 'Non-Fiction', 'Mystery', 'Sci-Fi', 'Biography', 'History'];
 if (!in_array($genre, $allowed_genres, true)) {
@@ -36,33 +24,30 @@ if (!in_array($time_period, $allowed_time_periods, true)) {
   $time_period = 'all';
 }
 
-$genre_expr = $has_genre_column
-  ? "COALESCE(NULLIF(TRIM(b.genre), ''), 'Fiction')"
-  : "CASE
+$genre_case = "CASE
     WHEN LOWER(CONCAT_WS(' ', b.title, b.author, COALESCE(b.description, ''))) REGEXP 'mystery|thriller|detective|crime|secret|case' THEN 'Mystery'
     WHEN LOWER(CONCAT_WS(' ', b.title, b.author, COALESCE(b.description, ''))) REGEXP 'sci[- ]?fi|science fiction|space|alien|robot|future' THEN 'Sci-Fi'
     WHEN LOWER(CONCAT_WS(' ', b.title, b.author, COALESCE(b.description, ''))) REGEXP 'biography|memoir|life story|personal|author\'s life' THEN 'Biography'
     WHEN LOWER(CONCAT_WS(' ', b.title, b.author, COALESCE(b.description, ''))) REGEXP 'history|historical|war|empire|ancient|chronicle' THEN 'History'
     WHEN LOWER(CONCAT_WS(' ', b.title, b.author, COALESCE(b.description, ''))) REGEXP 'non-fiction|nonfiction|fact|essay|guide|how to|self-help|reference' THEN 'Non-Fiction'
     ELSE 'Fiction'
-  END";
+END";
 
-$time_sql_condition = '';
-if ($time_period !== 'all' && $has_review_date_column) {
-  if ($time_period === 'week') {
-    $time_sql_condition = " AND r.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
-  } elseif ($time_period === 'month') {
-    $time_sql_condition = " AND r.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
-  }
-}
-
-$reviews_join = $has_review_status_column
-  ? "LEFT JOIN reviews r ON b.id = r.book_id AND r.status = 'approved'" . $time_sql_condition
-  : "LEFT JOIN reviews r ON b.id = r.book_id" . $time_sql_condition;
+$inner_sql = "SELECT
+        b.id,
+        b.title,
+        b.author,
+        b.description,
+        COALESCE(AVG(r.rating), 0) AS avg_rating,
+        COUNT(r.id) AS review_count,
+        $genre_case AS derived_genre
+    FROM books b
+    LEFT JOIN reviews r ON b.id = r.book_id
+    GROUP BY b.id";
 
 $filters = [];
 if ($genre !== 'All') {
-  $filters[] = "{$genre_expr} = '" . $conn->real_escape_string($genre) . "'";
+    $filters[] = "derived_genre = '" . $conn->real_escape_string($genre) . "'";
 }
 if ($search !== '') {
     $escaped_search = $conn->real_escape_string($search);
@@ -70,8 +55,7 @@ if ($search !== '') {
 }
 $where_clause = $filters ? 'WHERE ' . implode(' AND ', $filters) : '';
 
-$count_join = ($time_period !== 'all' && $has_review_date_column) ? $reviews_join : '';
-$count_sql = "SELECT COUNT(DISTINCT b.id) AS total FROM books b {$count_join} {$where_clause}";
+$count_sql = "SELECT COUNT(*) AS total FROM ($inner_sql) ranked $where_clause";
 $count_result = $conn->query($count_sql);
 $total_books = 0;
 if ($count_result) {
@@ -82,33 +66,20 @@ $total_pages = max(1, (int)ceil($total_books / $per_page));
 
 switch ($sort) {
   case 'most_reviewed':
-  $order_by = 'review_count DESC, avg_rating DESC, b.title ASC';
+    $order_by = 'review_count DESC, avg_rating DESC, title ASC';
     break;
     case 'newest':
-      $order_by = 'b.id DESC';
+        $order_by = 'id DESC';
         break;
     case 'title':
-    $order_by = 'b.title ASC';
+        $order_by = 'title ASC';
         break;
     default:
-    $order_by = 'avg_rating DESC, review_count DESC, b.title ASC';
+        $order_by = 'avg_rating DESC, review_count DESC, title ASC';
         break;
 }
 
-$data_sql = "SELECT
-    b.id,
-    b.title,
-    b.author,
-    b.description,
-    {$genre_expr} AS derived_genre,
-    COALESCE(AVG(r.rating), 0) AS avg_rating,
-    COUNT(r.id) AS review_count
-  FROM books b
-  {$reviews_join}
-  {$where_clause}
-  GROUP BY b.id, b.title, b.author, b.description, {$genre_expr}
-  ORDER BY {$order_by}
-  LIMIT {$per_page} OFFSET {$offset}";
+$data_sql = "SELECT * FROM ($inner_sql) ranked $where_clause ORDER BY $order_by LIMIT $per_page OFFSET $offset";
 $data_result = $conn->query($data_sql);
 $books = [];
 if ($data_result) {
@@ -118,7 +89,7 @@ if ($data_result) {
 }
 
 ?>
-<?php include __DIR__ . "/../includes/header.php"; ?>
+<?php include("../includes/header.php"); ?>
 
 <style>
 html, body {
@@ -664,15 +635,7 @@ body {
                 <span><?php echo $review_count; ?> review<?php echo $review_count === 1 ? '' : 's'; ?></span>
                 <span>Top Rated</span>
               </div>
-              <?php
-                $book_slug = trim((string)($book['slug'] ?? ''));
-                if ($book_slug === '') {
-                  $book_slug = preg_replace('/[^a-z0-9]+/i', '-', strtolower((string)$book['title']));
-                  $book_slug = trim($book_slug, '-');
-                }
-                $book_url = '/book-review/books/' . rawurlencode($book_slug);
-              ?>
-              <a class="view-btn" href="<?php echo sanitize($book_url); ?>">View Details</a>
+              <a class="view-btn" href="view.php?id=<?php echo (int)$book['id']; ?>">View Details</a>
             </div>
           </article>
         <?php endforeach; ?>
@@ -712,4 +675,4 @@ body {
   <div class="footer-spacer"></div>
 </main>
 
-<?php include __DIR__ . "/../includes/footer.php"; ?>
+<?php include("../includes/footer.php"); ?>

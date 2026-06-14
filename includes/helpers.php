@@ -60,6 +60,7 @@ function displayStars($rating) {
     return str_repeat('<i class="fa-solid fa-star" aria-hidden="true"></i>', $rounded) . " (" . round($rating, 1) . "/5)";
 }
 
+<<<<<<< HEAD
 // Check whether a column exists on a table (returns bool)
 /**
  * @param mysqli $conn
@@ -125,4 +126,6 @@ function render_action_notice_page(string $title, string $heading, string $messa
     exit();
 }
 
+=======
+>>>>>>> parent of efb6876 ( Bug Fixed)
 ?>
